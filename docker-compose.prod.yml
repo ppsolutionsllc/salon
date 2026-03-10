@@ -44,12 +44,12 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://localhost:3000/login',{redirect:'manual'}).then(r=>process.exit(r.status < 400 ? 0 : 1)).catch(()=>process.exit(1))",
+          "const s=require('net').connect(3000,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),5000)",
         ]
       interval: 20s
       timeout: 8s
       retries: 10
-      start_period: 45s
+      start_period: 30s
 
   nginx:
     depends_on:
