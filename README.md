@@ -194,9 +194,10 @@ Variables:
 
 Если используешь Coolify для доменов, не поднимай отдельный NPM для этого же проекта.
 
-1. В Coolify создай ресурс типа **Docker Compose** (не Dockerfile).
-2. Укажи compose-файл: `docker-compose.coolify.yml`.
-3. Добавь переменные окружения из `.env.prod.example`.
+1. В Coolify создай ресурс типа **Docker Compose** (не Dockerfile/Nixpacks).
+2. Укажи compose-файл: `docker-compose.coolify.yaml` (или `docker-compose.coolify.yml`).
+3. Добавь переменные окружения из `.env.prod.example`, минимум:
+   `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `AUTH_URL`, `AUTH_SECRET`, `SECRET_KEY`.
 4. Для домена `aestheticsprime.beauty` привяжи сервис `web` к порту `3000` в настройках Coolify.
 5. После первого deploy выполни в терминале сервиса `api`:
 
@@ -204,5 +205,7 @@ Variables:
 alembic upgrade head
 python scripts/seed.py
 ```
+
+Если раньше запускался с другими `POSTGRES_*` и теперь база не стартует, удали старый volume Postgres в Coolify и задеплой заново.
 
 Если выбрать в Coolify тип "Dockerfile", получишь ошибку `failed to read dockerfile: open Dockerfile: no such file or directory`, потому что Dockerfile в корне репозитория нет.
