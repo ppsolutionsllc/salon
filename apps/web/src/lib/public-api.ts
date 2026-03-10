@@ -57,7 +57,38 @@ export interface PublicBookingDetails {
   otp_expires_at?: string | null
 }
 
-const base = (process.env.NEXT_PUBLIC_API_URL || "/api/v1").replace(/\/+$/, "")
+function resolveApiBase() {
+  const fallback = "/api/v1"
+  const raw = (process.env.NEXT_PUBLIC_API_URL || fallback).trim().replace(/\/+$/, "")
+  if (!raw) return fallback
+
+  if (typeof window === "undefined") {
+    return raw
+  }
+
+  if (raw.startsWith("/")) {
+    return raw
+  }
+
+  try {
+    const parsed = new URL(raw, window.location.origin)
+    const blockedHosts = new Set(["api", "localhost", "127.0.0.1", "0.0.0.0"])
+
+    if (blockedHosts.has(parsed.hostname) || parsed.host === "api:8000") {
+      return fallback
+    }
+
+    if (parsed.origin !== window.location.origin) {
+      return fallback
+    }
+
+    return parsed.pathname.replace(/\/+$/, "") || fallback
+  } catch {
+    return fallback
+  }
+}
+
+const base = resolveApiBase()
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const safePath = path.startsWith("/") ? path : `/${path}`

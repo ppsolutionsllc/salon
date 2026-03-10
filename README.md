@@ -148,6 +148,7 @@ Variables:
 - Проверь, что `NEXT_PUBLIC_API_URL=/api/v1`.
 - Проверь rewrites в `apps/web/next.config.js`.
 - Проверь `curl http://localhost:8080/api/v1/health`.
+- В production `NEXT_PUBLIC_API_URL` принудительно фиксирован как `/api/v1` в compose, чтобы браузер не ходил на `api:8000`.
 
 ### 2) Infinite redirect / NextAuth config error
 - Проверь `NEXTAUTH_URL=https://aestheticsprime.beauty`.
