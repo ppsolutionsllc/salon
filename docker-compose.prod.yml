@@ -6,7 +6,12 @@ services:
     ports: !override []
 
   api:
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'
+    command:
+      [
+        "sh",
+        "-lc",
+        "python scripts/wait_for_services.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'",
+      ]
     volumes: !override
       - uploads_data:/var/app/uploads
       - ./.deploy:/var/app/deploy:ro
@@ -16,6 +21,8 @@ services:
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required in production}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://aestheticsprime.beauty}
       - TRUSTED_HOSTS=${TRUSTED_HOSTS:-aestheticsprime.beauty,localhost,127.0.0.1,api}
+      - WAIT_FOR_SERVICES_RETRIES=${WAIT_FOR_SERVICES_RETRIES:-40}
+      - WAIT_FOR_SERVICES_DELAY=${WAIT_FOR_SERVICES_DELAY:-2}
     healthcheck:
       test:
         [
@@ -30,13 +37,20 @@ services:
       start_period: 20s
 
   worker:
-    command: celery -A app.worker.celery_app worker --beat --loglevel=info
+    command:
+      [
+        "sh",
+        "-lc",
+        "python scripts/wait_for_services.py && celery -A app.worker.celery_app worker --beat --loglevel=info",
+      ]
     volumes: !override
       - uploads_data:/var/app/uploads
     environment:
       - ENVIRONMENT=production
       - CORS_ORIGINS=${CORS_ORIGINS:-https://aestheticsprime.beauty}
       - TRUSTED_HOSTS=${TRUSTED_HOSTS:-aestheticsprime.beauty,localhost,127.0.0.1,api}
+      - WAIT_FOR_SERVICES_RETRIES=${WAIT_FOR_SERVICES_RETRIES:-40}
+      - WAIT_FOR_SERVICES_DELAY=${WAIT_FOR_SERVICES_DELAY:-2}
     depends_on:
       db:
         condition: service_healthy
@@ -61,11 +75,14 @@ services:
       - API_INTERNAL_URL=${API_INTERNAL_URL:-http://api:8000}
       - INTERNAL_API_URL=${INTERNAL_API_URL:-http://api:8000}
       - API_PUBLIC_URL=${API_PUBLIC_URL:-https://aestheticsprime.beauty/api}
-      - NEXT_PUBLIC_API_URL=/api/v1
+      - NEXT_PUBLIC_API_URL=/api
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://aestheticsprime.beauty}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://aestheticsprime.beauty}
-      - NEXTAUTH_URL=${NEXTAUTH_URL:?NEXTAUTH_URL is required in production}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required in production}
+      - AUTH_URL=${AUTH_URL:?AUTH_URL is required in production}
+      - AUTH_SECRET=${AUTH_SECRET:?AUTH_SECRET is required in production}
       - AUTH_TRUST_HOST=${AUTH_TRUST_HOST:-true}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:?NEXTAUTH_URL is required for compatibility}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required for compatibility}
     healthcheck:
       test:
         [

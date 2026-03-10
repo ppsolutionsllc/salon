@@ -12,8 +12,9 @@ const nextConfig = {
         const apiInternalUrl = (process.env.API_INTERNAL_URL || "http://api:8000").replace(/\/+$/, "");
         return [
             {
-                source: "/api/v1/:path*",
-                destination: `${apiInternalUrl}/api/v1/:path*`,
+                // Keep Auth.js handlers on /api/auth local to Next.js.
+                source: "/api/:path((?!auth(?:/|$)).*)",
+                destination: `${apiInternalUrl}/api/:path`,
             },
         ];
     },

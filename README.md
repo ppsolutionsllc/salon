@@ -7,13 +7,13 @@ Production-ready монорепозиторий для работы за Nginx P
 - `web` (Next.js standalone) слушает `3000` в контейнере, наружу публикуется `8080`.
 - `api` (FastAPI) и `worker` работают только во внутренней docker-сети.
 - `db` и `redis` без публичных портов в production.
-- API для браузера идет по same-origin пути `/api/v1` через Next rewrites.
+- API для браузера идет по same-origin пути `/api` через Next rewrites (`/api/*` -> FastAPI `/api/*`).
 - NextAuth работает на домене `https://aestheticsprime.beauty` с `trustHost`.
 
 ## Что важно
 
-- В production не использовать `localhost` в `NEXTAUTH_URL`.
-- `NEXTAUTH_SECRET` и `SECRET_KEY` должны быть постоянными (не менять между перезапусками).
+- В production не использовать `localhost` в `AUTH_URL`.
+- `AUTH_SECRET` и `SECRET_KEY` должны быть постоянными (не менять между перезапусками).
 - Рекомендуемый вход в приложение через NPM: `https://aestheticsprime.beauty`.
 
 ## Файлы окружения
@@ -25,12 +25,15 @@ Production-ready монорепозиторий для работы за Nginx P
 
 - `ENVIRONMENT=production`
 - `WEB_EXTERNAL_PORT=8080`
-- `NEXTAUTH_URL=https://aestheticsprime.beauty`
-- `NEXTAUTH_SECRET=<длинный секрет>`
+- `AUTH_URL=https://aestheticsprime.beauty`
+- `AUTH_SECRET=<длинный секрет>`
 - `SECRET_KEY=<длинный секрет>`
 - `API_INTERNAL_URL=http://api:8000`
 - `API_PUBLIC_URL=https://aestheticsprime.beauty/api`
-- `NEXT_PUBLIC_API_URL=/api/v1`
+- `NEXT_PUBLIC_API_URL=/api`
+- `NEXT_PUBLIC_SITE_URL=https://aestheticsprime.beauty`
+- `NEXTAUTH_URL=https://aestheticsprime.beauty` (legacy compat)
+- `NEXTAUTH_SECRET=<тот же секрет>` (legacy compat)
 - `TRUSTED_HOSTS=aestheticsprime.beauty,localhost,127.0.0.1,api`
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
 - `SEED_NETWORK_ADMIN_EMAIL`, `SEED_NETWORK_ADMIN_PASSWORD`
@@ -145,23 +148,25 @@ Variables:
 ## Типовые ошибки и решения
 
 ### 1) 500/503 на `/api/*`
-- Проверь, что `NEXT_PUBLIC_API_URL=/api/v1`.
+- Проверь, что `NEXT_PUBLIC_API_URL=/api`.
 - Проверь rewrites в `apps/web/next.config.js`.
 - Проверь `curl http://localhost:8080/api/v1/health`.
-- В production `NEXT_PUBLIC_API_URL` принудительно фиксирован как `/api/v1` в compose, чтобы браузер не ходил на `api:8000`.
+- В production `NEXT_PUBLIC_API_URL` принудительно фиксирован как `/api` в compose, чтобы браузер не ходил на `api:8000`.
 
 ### 2) Infinite redirect / NextAuth config error
-- Проверь `NEXTAUTH_URL=https://aestheticsprime.beauty`.
-- Проверь `NEXTAUTH_SECRET` (постоянный).
+- Проверь `AUTH_URL=https://aestheticsprime.beauty`.
+- Проверь `AUTH_SECRET` (постоянный).
 - Проверь `AUTH_TRUST_HOST=true`.
+- Проверь, что `AUTH_SECRET` и `NEXTAUTH_SECRET` совпадают (для совместимости).
+- Проверь, что NPM передает `X-Forwarded-Proto=https` (иначе secure-cookie/callback будут ломаться).
 
 ### 3) Логин проходит, но сессии нет
 - Проверь, что вход идет по `https://aestheticsprime.beauty`.
-- Проверь корректный `NEXTAUTH_URL`.
+- Проверь корректный `AUTH_URL`.
 - Очисти старые service workers/кэш браузера (в проекте SW отключен по умолчанию).
 
 ### 4) CORS ошибки
-- В текущей схеме CORS не нужен для браузера (same-origin через `/api/v1`).
+- В текущей схеме CORS не нужен для браузера (same-origin через `/api`).
 - Если вызываешь API с другого origin, заполни `CORS_ORIGINS`.
 
 ### 5) LetsEncrypt challenge fail в NPM

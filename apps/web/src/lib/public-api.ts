@@ -58,7 +58,7 @@ export interface PublicBookingDetails {
 }
 
 function resolveApiBase() {
-  const fallback = "/api/v1"
+  const fallback = "/api"
   const raw = (process.env.NEXT_PUBLIC_API_URL || fallback).trim().replace(/\/+$/, "")
   if (!raw) return fallback
 
@@ -88,11 +88,18 @@ function resolveApiBase() {
   }
 }
 
+function withApiVersion(base: string, path: string) {
+  if (base.endsWith("/v1")) {
+    return `${base}${path}`
+  }
+  return `${base}/v1${path}`
+}
+
 const base = resolveApiBase()
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const safePath = path.startsWith("/") ? path : `/${path}`
-  const res = await fetch(`${base}${safePath}`, {
+  const res = await fetch(withApiVersion(base, safePath), {
     ...init,
     headers: {
       "Content-Type": "application/json",

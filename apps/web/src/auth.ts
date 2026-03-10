@@ -13,7 +13,8 @@ declare module "next-auth" {
 }
 
 export const authConfig = {
-    trustHost: true,
+    trustHost: (process.env.AUTH_TRUST_HOST ?? "true").toLowerCase() !== "false",
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
     providers: [
         CredentialsProvider({
             name: "Credentials",

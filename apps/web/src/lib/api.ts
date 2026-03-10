@@ -8,7 +8,7 @@ export interface ApiOptions {
 }
 
 function resolveApiBase() {
-    const fallback = "/api/v1"
+    const fallback = "/api"
     const raw = (process.env.NEXT_PUBLIC_API_URL || fallback).trim().replace(/\/+$/, "")
     if (!raw) return fallback
 
@@ -40,6 +40,13 @@ function resolveApiBase() {
     }
 }
 
+function withApiVersion(base: string, path: string) {
+    if (base.endsWith("/v1")) {
+        return `${base}${path}`
+    }
+    return `${base}/v1${path}`
+}
+
 async function apiFetch(path: string, opts: ApiOptions = {}) {
     const base = resolveApiBase()
     const safePath = path.startsWith("/") ? path : `/${path}`
@@ -49,7 +56,7 @@ async function apiFetch(path: string, opts: ApiOptions = {}) {
         throw new Error("NO_TOKEN")
     }
 
-    const res = await fetch(`${base}${safePath}`, {
+    const res = await fetch(withApiVersion(base, safePath), {
         method: opts.method ?? "GET",
         headers: {
             "Content-Type": "application/json",
