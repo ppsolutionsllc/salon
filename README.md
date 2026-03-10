@@ -31,6 +31,7 @@ Production-ready монорепозиторий для работы за Nginx P
 - `API_INTERNAL_URL=http://api:8000`
 - `API_PUBLIC_URL=https://aestheticsprime.beauty/api`
 - `NEXT_PUBLIC_API_URL=/api/v1`
+- `TRUSTED_HOSTS=aestheticsprime.beauty,localhost,127.0.0.1,api`
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
 - `SEED_NETWORK_ADMIN_EMAIL`, `SEED_NETWORK_ADMIN_PASSWORD`
 - `HEALTHCHECK_PORT=8080`

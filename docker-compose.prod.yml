@@ -15,7 +15,7 @@ services:
       - ENVIRONMENT=production
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required in production}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://aestheticsprime.beauty}
-      - TRUSTED_HOSTS=${TRUSTED_HOSTS:-aestheticsprime.beauty}
+      - TRUSTED_HOSTS=${TRUSTED_HOSTS:-aestheticsprime.beauty,localhost,127.0.0.1,api}
     healthcheck:
       test:
         [
@@ -36,7 +36,7 @@ services:
     environment:
       - ENVIRONMENT=production
       - CORS_ORIGINS=${CORS_ORIGINS:-https://aestheticsprime.beauty}
-      - TRUSTED_HOSTS=${TRUSTED_HOSTS:-aestheticsprime.beauty}
+      - TRUSTED_HOSTS=${TRUSTED_HOSTS:-aestheticsprime.beauty,localhost,127.0.0.1,api}
     depends_on:
       db:
         condition: service_healthy
