@@ -1,193 +1,184 @@
-# SALON (Aesthetic Prime) Monorepo
+# SALON: FastAPI + Next.js + Postgres + Redis
 
-Monorepo:
-- `apps/api` - FastAPI + SQLAlchemy + Alembic
-- `apps/web` - Next.js (App Router) + NextAuth
-- `docker-compose.yml` - local/dev run
-- `docker-compose.prod.yml` - production overrides
-- `.github/workflows/deploy.yml` - deploy/rollback/status via SSH
-- `scripts/deploy_server.sh` - deploy script
-- `scripts/rollback_server.sh` - rollback script
-- `scripts/status_server.sh` - status script
+Production-ready монорепозиторий для работы за Nginx Proxy Manager (NPM) без отдельного внутреннего nginx в основном сценарии.
 
-## Публикация на GitHub за 5 минут
+## Архитектура (production)
 
-1. Убедитесь, что заполнен только `.env.example`, а `.env` отсутствует.
-2. Инициализируйте репозиторий и запушьте:
+- `web` (Next.js standalone) слушает `3000` в контейнере, наружу публикуется `8080`.
+- `api` (FastAPI) и `worker` работают только во внутренней docker-сети.
+- `db` и `redis` без публичных портов в production.
+- API для браузера идет по same-origin пути `/api/v1` через Next rewrites.
+- NextAuth работает на домене `https://crm.example.com` с `trustHost`.
 
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin <URL_ВАШЕГО_REPO>
-git push -u origin main
-```
+## Что важно
 
-3. Короткий чеклист перед `git push`:
-- не коммитить `.env`
-- не коммитить `data/*`, `uploads/*`, `backups/*`
-- не коммитить `apps/web/node_modules`, `apps/web/.next`
-- не коммитить `__MACOSX`, `.DS_Store`, `*.log`, `*.tsbuildinfo`
+- В production не использовать `localhost` в `NEXTAUTH_URL`.
+- `NEXTAUTH_SECRET` и `SECRET_KEY` должны быть постоянными (не менять между перезапусками).
+- Рекомендуемый вход в приложение через NPM: `https://crm.example.com`.
 
-Все это уже закрыто в `.gitignore`.
+## Файлы окружения
 
-## Локальный запуск (dev)
+- Локально: `.env.example`
+- Production: `.env.prod.example` -> скопировать в `.env` на VPS
 
-```bash
-cp .env.example .env
-docker compose up -d --build
-docker compose run --rm api alembic upgrade head
-docker compose run --rm api python scripts/seed.py
-```
+Минимально обязательные переменные в `.env` на VPS:
 
-Основные URL:
-- `http://localhost:4000/`
-- `http://localhost:4000/crm`
-- `http://localhost:4000/staff`
-- `http://localhost:4000/client`
-- `http://localhost:4000/api/v1/health`
+- `ENVIRONMENT=production`
+- `WEB_EXTERNAL_PORT=8080`
+- `NEXTAUTH_URL=https://crm.example.com`
+- `NEXTAUTH_SECRET=<длинный секрет>`
+- `SECRET_KEY=<длинный секрет>`
+- `API_INTERNAL_URL=http://api:8000`
+- `API_PUBLIC_URL=https://crm.example.com/api`
+- `NEXT_PUBLIC_API_URL=/api/v1`
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `SEED_NETWORK_ADMIN_EMAIL`, `SEED_NETWORK_ADMIN_PASSWORD`
+- `HEALTHCHECK_PORT=8080`
 
-## Установка на сервер
+## Быстрый запуск на VPS
 
-Пример каталога: `/opt/salon`.
-
-1. Установить Docker + Compose plugin на сервере.
-2. Клонировать проект:
+1. Клонирование:
 
 ```bash
 sudo mkdir -p /opt/salon
 sudo chown -R $USER:$USER /opt/salon
-git clone <URL_ВАШЕГО_REPO> /opt/salon
+git clone <YOUR_REPO_URL> /opt/salon
 cd /opt/salon
 ```
 
-3. Создать `.env` на сервере из шаблона:
+2. Подготовка env:
 
 ```bash
-cp .env.example .env
+cp .env.prod.example .env
+nano .env
 ```
 
-Обязательно задать в серверном `.env`:
-- `ENVIRONMENT=production`
-- `SECRET_KEY=<сильный_секрет_мин_32_символа>`
-- `NEXTAUTH_SECRET=<сильный_секрет_мин_32_символа>`
-- `NEXTAUTH_URL=https://<ваш-домен>`
-- `NEXT_PUBLIC_APP_URL=https://<ваш-домен>`
-- `NEXT_PUBLIC_API_URL=https://<ваш-домен>/api/v1`
-- `AUTH_TRUST_HOST=true`
-- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-- `SEED_NETWORK_ADMIN_EMAIL`, `SEED_NETWORK_ADMIN_PASSWORD`
-
-4. Первый запуск в production:
+3. Поднять production-стек:
 
 ```bash
 ENVIRONMENT=production docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+4. Применить миграции:
+
+```bash
 ENVIRONMENT=production docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm api alembic upgrade head
 ```
 
-5. Проверка:
-- `curl -f http://localhost:4000/api/v1/health`
-- открыть домен и `/crm/login`
+5. Seed admin (один раз):
 
-6. Порты/домен:
-- внешний HTTP(S) -> `nginx` контейнер (порт `4000` в текущем compose)
-- для публичного домена обычно ставят reverse proxy/балансировщик перед сервером.
-
-## GitHub Actions: обязательные секреты
-
-В репозитории GitHub -> `Settings -> Secrets and variables -> Actions`:
-
-Secrets:
-- `SERVER_HOST`
-- `SERVER_USER`
-- `SERVER_SSH_KEY`
-- `SERVER_APP_DIR` (например `/opt/salon`)
-- `SERVER_PORT` (обычно `22`)
-
-Опциональные Variables:
-- `ENVIRONMENT` (рекомендуется `production`)
-- `HEALTHCHECK_PORT` (обычно `4000`)
-
-## Деплой, статус, откат
-
-### Автодеплой
-- При `push` в `main` запускается `.github/workflows/deploy.yml`.
-- Workflow подключается по SSH и вызывает `scripts/deploy_server.sh`.
-
-### Ручной запуск workflow
-`Actions -> Deploy To Server -> Run workflow` и выбрать:
-- `action=deploy|rollback|status`
-- `ref` (ветка/тег/commit)
-- `rollback_to` (опционально для rollback)
-
-### Ручные команды на сервере
-
-Deploy:
 ```bash
-cd /opt/salon
+ENVIRONMENT=production docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm api python scripts/seed.py
+```
+
+## Настройка Nginx Proxy Manager
+
+Создай Proxy Host:
+
+- Domain Names: `crm.example.com`
+- Scheme: `http`
+- Forward Hostname/IP: `<VPS_IP>`
+- Forward Port: `8080`
+- Websockets Support: `ON`
+- Block Common Exploits: `ON`
+
+SSL:
+
+- Request a new SSL Certificate
+- Force SSL: `ON`
+- HTTP/2 Support: `ON`
+
+## Healthchecks и диагностика
+
+Проверки на VPS:
+
+```bash
+curl -I http://localhost:8080/healthz
+curl http://localhost:8080/api/v1/health
+```
+
+Ожидаемо:
+
+- `/healthz` -> `200 ok`
+- `/api/v1/health` -> `{"status":"ok"}`
+
+Состояние контейнеров:
+
+```bash
+ENVIRONMENT=production docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+```
+
+## Deploy/rollback/status
+
+Скрипты:
+
+- `scripts/deploy_server.sh`
+- `scripts/rollback_server.sh`
+- `scripts/status_server.sh`
+
+Примеры:
+
+```bash
 APP_DIR=/opt/salon ENVIRONMENT=production bash scripts/deploy_server.sh --ref main
-```
-
-Status:
-```bash
-cd /opt/salon
 APP_DIR=/opt/salon ENVIRONMENT=production bash scripts/status_server.sh
-```
-
-Rollback на предыдущий релиз:
-```bash
-cd /opt/salon
 APP_DIR=/opt/salon ENVIRONMENT=production bash scripts/rollback_server.sh --previous --no-migrations
 ```
 
-Rollback на конкретный ref:
-```bash
-cd /opt/salon
-APP_DIR=/opt/salon ENVIRONMENT=production bash scripts/rollback_server.sh --to <ref> --no-migrations
-```
+## GitHub Actions (SSH deploy)
 
-### Если нужен ручной rollback через git
+Workflow: `.github/workflows/deploy.yml`
 
-```bash
-cd /opt/salon
-git fetch --all --prune --tags
-git reset --hard <commit_or_tag_or_branch>
-ENVIRONMENT=production docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-```
+Secrets:
 
-## Что делает deploy_server.sh
+- `SERVER_HOST`
+- `SERVER_USER`
+- `SERVER_SSH_KEY`
+- `SERVER_APP_DIR`
+- `SERVER_PORT`
 
-- сохраняет текущее состояние в `.deploy/state.env`
-- пишет историю в `.deploy/releases.log`
-- делает backup БД в `backups/db/*.sql.gz` перед миграциями
-- опционально делает backup uploads в `backups/uploads/*.tar.gz`
-- поднимает контейнеры через prod-compose при `ENVIRONMENT=production`
-- запускает `alembic upgrade head`
-- выполняет health/smoke checks
-- при провале делает auto-rollback на `PREVIOUS_REF`
+Variables:
 
-## Политика миграций (важно)
+- `ENVIRONMENT=production`
+- `HEALTHCHECK_PORT=8080`
 
-- По умолчанию rollback не делает downgrade БД.
-- Миграции должны быть backward-compatible минимум 1 релиз.
-- Для destructive-изменений использовать 2-step подход:
-1. сначала additive миграция + совместимый код
-2. удаление старого только в следующем релизе
+## Типовые ошибки и решения
 
-Восстановление БД из backup - только вручную в maintenance-окне.
+### 1) 500/503 на `/api/*`
+- Проверь, что `NEXT_PUBLIC_API_URL=/api/v1`.
+- Проверь rewrites в `apps/web/next.config.js`.
+- Проверь `curl http://localhost:8080/api/v1/health`.
 
-## Runtime-данные
+### 2) Infinite redirect / NextAuth config error
+- Проверь `NEXTAUTH_URL=https://crm.example.com`.
+- Проверь `NEXTAUTH_SECRET` (постоянный).
+- Проверь `AUTH_TRUST_HOST=true`.
 
-- `uploads/` - runtime данные (в репо только `.gitkeep`)
-- `data/` - volume-данные БД/Redis (не коммитятся)
-- `backups/` - локальные backup-файлы (не коммитятся)
+### 3) Логин проходит, но сессии нет
+- Проверь, что вход идет по `https://crm.example.com`.
+- Проверь корректный `NEXTAUTH_URL`.
+- Очисти старые service workers/кэш браузера (в проекте SW отключен по умолчанию).
 
-## CRM ссылка на GitHub Actions
+### 4) CORS ошибки
+- В текущей схеме CORS не нужен для браузера (same-origin через `/api/v1`).
+- Если вызываешь API с другого origin, заполни `CORS_ORIGINS`.
 
-Для кнопки в CRM settings:
-- переменная `NEXT_PUBLIC_GITHUB_ACTIONS_URL` в `.env`
-- пример:
-  `https://github.com/<org>/<repo>/actions/workflows/deploy.yml`
+### 5) LetsEncrypt challenge fail в NPM
+- Убедись, что домен резолвится на VPS.
+- Открой 80/443 на сервере.
+- Если Cloudflare, для выпуска временно переключи DNS в `DNS only`.
 
-Не добавляйте в эту переменную токены и приватные параметры.
+## Uploads
+
+- Uploads хранятся в volume: `/var/app/uploads`.
+- В репозитории runtime-файлы не коммитятся.
+
+## Проверка "готово к работе"
+
+Перед сдачей/запуском в проде:
+
+1. `docker compose ps` -> все ключевые сервисы `Up` и health `healthy` где есть.
+2. `curl -I http://localhost:8080/healthz` -> 200.
+3. `curl http://localhost:8080/api/v1/health` -> ok.
+4. `https://crm.example.com/crm/login` открывается.
+5. Логин создает сессию и редиректит в `/crm`.
+6. CRM страницы (`/crm`, `/staff`, `/client`) открываются без `HTTP 503`.

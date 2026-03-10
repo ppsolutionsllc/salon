@@ -57,10 +57,11 @@ export interface PublicBookingDetails {
   otp_expires_at?: string | null
 }
 
-const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"
+const base = (process.env.NEXT_PUBLIC_API_URL || "/api/v1").replace(/\/+$/, "")
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${base}${path}`, {
+  const safePath = path.startsWith("/") ? path : `/${path}`
+  const res = await fetch(`${base}${safePath}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",

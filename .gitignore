@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.prod.example
 
 # Deploy runtime state/logs
 .deploy/state.env

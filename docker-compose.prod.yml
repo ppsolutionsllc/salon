@@ -1,12 +1,21 @@
 services:
+  db:
+    ports: !override []
+
+  redis:
+    ports: !override []
+
   api:
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'
     volumes: !override
       - uploads_data:/var/app/uploads
       - ./.deploy:/var/app/deploy:ro
+    ports: !override []
     environment:
       - ENVIRONMENT=production
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required in production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://crm.example.com}
+      - TRUSTED_HOSTS=${TRUSTED_HOSTS:-crm.example.com}
     healthcheck:
       test:
         [
@@ -26,6 +35,15 @@ services:
       - uploads_data:/var/app/uploads
     environment:
       - ENVIRONMENT=production
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://crm.example.com}
+      - TRUSTED_HOSTS=${TRUSTED_HOSTS:-crm.example.com}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
 
   web:
     build:
@@ -34,26 +52,35 @@ services:
       target: runner
     command: node server.js
     volumes: !override []
+    ports: !override
+      - "${WEB_EXTERNAL_PORT:-8080}:3000"
     environment:
       - NODE_ENV=production
+      - HOSTNAME=0.0.0.0
+      - PORT=3000
+      - API_INTERNAL_URL=${API_INTERNAL_URL:-http://api:8000}
+      - INTERNAL_API_URL=${INTERNAL_API_URL:-http://api:8000}
+      - API_PUBLIC_URL=${API_PUBLIC_URL:-https://crm.example.com/api}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api/v1}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://crm.example.com}
       - NEXTAUTH_URL=${NEXTAUTH_URL:?NEXTAUTH_URL is required in production}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required in production}
+      - AUTH_TRUST_HOST=${AUTH_TRUST_HOST:-true}
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "const s=require('net').connect(3000,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),5000)",
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
-      interval: 20s
-      timeout: 8s
-      retries: 10
-      start_period: 30s
-
-  nginx:
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
     depends_on:
       api:
         condition: service_healthy
-      web:
-        condition: service_healthy
+
+  nginx:
+    profiles: ["with-internal-nginx"]

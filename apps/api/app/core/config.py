@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     
     DATABASE_URL: str
     REDIS_URL: str
+    CORS_ORIGINS: str = ""
+    TRUSTED_HOSTS: str = ""
     UPLOADS_DIR: str = "/var/app/uploads"
     DEPLOY_STATE_FILE: str = "/var/app/deploy/state.env"
     DEPLOY_RELEASES_LOG: str = "/var/app/deploy/releases.log"

@@ -25,7 +25,8 @@ export const authConfig = {
                 if (!credentials?.email || !credentials?.password) return null
 
                 try {
-                    const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://api:8000/api/v1";
+                    const apiBase = (process.env.API_INTERNAL_URL || process.env.INTERNAL_API_URL || "http://api:8000").replace(/\/+$/, "");
+                    const apiUrl = `${apiBase}/api/v1`;
                     const res = await fetch(`${apiUrl}/auth/login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -81,7 +82,8 @@ export const authConfig = {
 
             // Access token has expired, try to update it
             try {
-                const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://api:8000/api/v1";
+                const apiBase = (process.env.API_INTERNAL_URL || process.env.INTERNAL_API_URL || "http://api:8000").replace(/\/+$/, "");
+                const apiUrl = `${apiBase}/api/v1`;
                 const response = await fetch(`${apiUrl}/auth/refresh?refresh_token=${token.refreshToken}`, {
                     method: 'POST',
                 });

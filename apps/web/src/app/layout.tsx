@@ -46,15 +46,34 @@ export default function RootLayout({
                 <Providers>
                     {children}
                 </Providers>
-                <script dangerouslySetInnerHTML={{
-                    __html: `
-                        if ('serviceWorker' in navigator) {
-                            window.addEventListener('load', function() {
-                                navigator.serviceWorker.register('/sw.js');
-                            });
-                        }
-                    `
-                }} />
+                {process.env.NEXT_PUBLIC_ENABLE_SW === "true" ? (
+                    <script
+                        dangerouslySetInnerHTML={{
+                            __html: `
+                                if ('serviceWorker' in navigator) {
+                                    window.addEventListener('load', function() {
+                                        navigator.serviceWorker.register('/sw.js');
+                                    });
+                                }
+                            `,
+                        }}
+                    />
+                ) : (
+                    <script
+                        dangerouslySetInnerHTML={{
+                            __html: `
+                                if ('serviceWorker' in navigator) {
+                                    window.addEventListener('load', function() {
+                                        navigator.serviceWorker.getRegistrations()
+                                            .then(function(regs) {
+                                                regs.forEach(function(reg) { reg.unregister(); });
+                                            });
+                                    });
+                                }
+                            `,
+                        }}
+                    />
+                )}
             </body>
         </html>
     )

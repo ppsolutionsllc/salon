@@ -74,7 +74,7 @@ jobs:
 
             HEALTHCHECK_PORT_VALUE="${{ vars.HEALTHCHECK_PORT }}"
             if [ -z "$HEALTHCHECK_PORT_VALUE" ]; then
-              HEALTHCHECK_PORT_VALUE="4000"
+              HEALTHCHECK_PORT_VALUE="8080"
             fi
 
             export APP_DIR

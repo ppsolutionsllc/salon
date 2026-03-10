@@ -8,14 +8,15 @@ export interface ApiOptions {
 }
 
 async function apiFetch(path: string, opts: ApiOptions = {}) {
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api/v1"
+    const base = (process.env.NEXT_PUBLIC_API_URL || "/api/v1").replace(/\/+$/, "")
+    const safePath = path.startsWith("/") ? path : `/${path}`
 
     // Don't make authenticated requests without a token — prevents 401 on mount
     if (opts.token === undefined || opts.token === "" || opts.token === null) {
         throw new Error("NO_TOKEN")
     }
 
-    const res = await fetch(`${base}${path}`, {
+    const res = await fetch(`${base}${safePath}`, {
         method: opts.method ?? "GET",
         headers: {
             "Content-Type": "application/json",

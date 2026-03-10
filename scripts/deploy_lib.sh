@@ -11,7 +11,7 @@ BACKUP_DB_DIR="${BACKUP_DIR}/db"
 BACKUP_UPLOADS_DIR="${BACKUP_DIR}/uploads"
 DB_BACKUP_KEEP="${DB_BACKUP_KEEP:-20}"
 UPLOADS_BACKUP_KEEP="${UPLOADS_BACKUP_KEEP:-10}"
-HEALTHCHECK_PORT="${HEALTHCHECK_PORT:-4000}"
+HEALTHCHECK_PORT="${HEALTHCHECK_PORT:-8080}"
 HEALTHCHECK_RETRIES="${HEALTHCHECK_RETRIES:-30}"
 HEALTHCHECK_DELAY="${HEALTHCHECK_DELAY:-2}"
 
@@ -202,8 +202,12 @@ container_status() {
 wait_for_services_ready() {
   local retries="${1:-60}"
   local delay="${2:-2}"
-  local services=(db redis api web worker nginx)
+  local services=(db redis api web worker)
   local attempt status id all_ok
+
+  if [[ "${ENVIRONMENT}" != "production" ]]; then
+    services+=(nginx)
+  fi
 
   for ((attempt=1; attempt<=retries; attempt++)); do
     all_ok=1
