@@ -75,6 +75,7 @@ cp .env.example .env
 - `NEXTAUTH_URL=https://<ваш-домен>`
 - `NEXT_PUBLIC_APP_URL=https://<ваш-домен>`
 - `NEXT_PUBLIC_API_URL=https://<ваш-домен>/api/v1`
+- `AUTH_TRUST_HOST=true`
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
 - `SEED_NETWORK_ADMIN_EMAIL`, `SEED_NETWORK_ADMIN_PASSWORD`
 
