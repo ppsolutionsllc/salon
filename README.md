@@ -8,13 +8,13 @@ Production-ready монорепозиторий для работы за Nginx P
 - `api` (FastAPI) и `worker` работают только во внутренней docker-сети.
 - `db` и `redis` без публичных портов в production.
 - API для браузера идет по same-origin пути `/api/v1` через Next rewrites.
-- NextAuth работает на домене `https://crm.example.com` с `trustHost`.
+- NextAuth работает на домене `https://aestheticsprime.beauty` с `trustHost`.
 
 ## Что важно
 
 - В production не использовать `localhost` в `NEXTAUTH_URL`.
 - `NEXTAUTH_SECRET` и `SECRET_KEY` должны быть постоянными (не менять между перезапусками).
-- Рекомендуемый вход в приложение через NPM: `https://crm.example.com`.
+- Рекомендуемый вход в приложение через NPM: `https://aestheticsprime.beauty`.
 
 ## Файлы окружения
 
@@ -25,11 +25,11 @@ Production-ready монорепозиторий для работы за Nginx P
 
 - `ENVIRONMENT=production`
 - `WEB_EXTERNAL_PORT=8080`
-- `NEXTAUTH_URL=https://crm.example.com`
+- `NEXTAUTH_URL=https://aestheticsprime.beauty`
 - `NEXTAUTH_SECRET=<длинный секрет>`
 - `SECRET_KEY=<длинный секрет>`
 - `API_INTERNAL_URL=http://api:8000`
-- `API_PUBLIC_URL=https://crm.example.com/api`
+- `API_PUBLIC_URL=https://aestheticsprime.beauty/api`
 - `NEXT_PUBLIC_API_URL=/api/v1`
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
 - `SEED_NETWORK_ADMIN_EMAIL`, `SEED_NETWORK_ADMIN_PASSWORD`
@@ -75,7 +75,7 @@ ENVIRONMENT=production docker compose -f docker-compose.yml -f docker-compose.pr
 
 Создай Proxy Host:
 
-- Domain Names: `crm.example.com`
+- Domain Names: `aestheticsprime.beauty`
 - Scheme: `http`
 - Forward Hostname/IP: `<VPS_IP>`
 - Forward Port: `8080`
@@ -149,12 +149,12 @@ Variables:
 - Проверь `curl http://localhost:8080/api/v1/health`.
 
 ### 2) Infinite redirect / NextAuth config error
-- Проверь `NEXTAUTH_URL=https://crm.example.com`.
+- Проверь `NEXTAUTH_URL=https://aestheticsprime.beauty`.
 - Проверь `NEXTAUTH_SECRET` (постоянный).
 - Проверь `AUTH_TRUST_HOST=true`.
 
 ### 3) Логин проходит, но сессии нет
-- Проверь, что вход идет по `https://crm.example.com`.
+- Проверь, что вход идет по `https://aestheticsprime.beauty`.
 - Проверь корректный `NEXTAUTH_URL`.
 - Очисти старые service workers/кэш браузера (в проекте SW отключен по умолчанию).
 
@@ -179,6 +179,6 @@ Variables:
 1. `docker compose ps` -> все ключевые сервисы `Up` и health `healthy` где есть.
 2. `curl -I http://localhost:8080/healthz` -> 200.
 3. `curl http://localhost:8080/api/v1/health` -> ok.
-4. `https://crm.example.com/crm/login` открывается.
+4. `https://aestheticsprime.beauty/crm/login` открывается.
 5. Логин создает сессию и редиректит в `/crm`.
 6. CRM страницы (`/crm`, `/staff`, `/client`) открываются без `HTTP 503`.
