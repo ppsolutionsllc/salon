@@ -1,0 +1,154 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: always
+    command:
+      [
+        "sh",
+        "-lc",
+        "python scripts/wait_for_services.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'",
+      ]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: production
+      SECRET_KEY: ${SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS}
+      WAIT_FOR_SERVICES_RETRIES: ${WAIT_FOR_SERVICES_RETRIES:-40}
+      WAIT_FOR_SERVICES_DELAY: ${WAIT_FOR_SERVICES_DELAY:-2}
+      UPLOADS_DIR: /var/app/uploads
+      SEED_NETWORK_ADMIN_EMAIL: ${SEED_NETWORK_ADMIN_EMAIL}
+      SEED_NETWORK_ADMIN_PASSWORD: ${SEED_NETWORK_ADMIN_PASSWORD}
+    volumes:
+      - uploads_data:/var/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/v1/health').getcode()==200 else 1)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: always
+    command:
+      [
+        "sh",
+        "-lc",
+        "python scripts/wait_for_services.py && celery -A app.worker.celery_app worker --beat --loglevel=info",
+      ]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: production
+      SECRET_KEY: ${SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS}
+      WAIT_FOR_SERVICES_RETRIES: ${WAIT_FOR_SERVICES_RETRIES:-40}
+      WAIT_FOR_SERVICES_DELAY: ${WAIT_FOR_SERVICES_DELAY:-2}
+      UPLOADS_DIR: /var/app/uploads
+      SEED_NETWORK_ADMIN_EMAIL: ${SEED_NETWORK_ADMIN_EMAIL}
+      SEED_NETWORK_ADMIN_PASSWORD: ${SEED_NETWORK_ADMIN_PASSWORD}
+    volumes:
+      - uploads_data:/var/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      target: runner
+    restart: always
+    command: node server.js
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      API_INTERNAL_URL: http://api:8000
+      INTERNAL_API_URL: http://api:8000
+      API_PUBLIC_URL: ${API_PUBLIC_URL}
+      NEXT_PUBLIC_API_URL: /api
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      AUTH_URL: ${AUTH_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXT_PUBLIC_UPDATE_SYSTEM: ${NEXT_PUBLIC_UPDATE_SYSTEM:-github_actions}
+      NEXT_PUBLIC_DEPLOY_BRANCH: ${NEXT_PUBLIC_DEPLOY_BRANCH:-main}
+      NEXT_PUBLIC_AUTO_DEPLOY_ON_PUSH: ${NEXT_PUBLIC_AUTO_DEPLOY_ON_PUSH:-true}
+      NEXT_PUBLIC_DEPLOY_WORKFLOW_NAME: ${NEXT_PUBLIC_DEPLOY_WORKFLOW_NAME:-Deploy To Server}
+      NEXT_PUBLIC_GITHUB_ACTIONS_URL: ${NEXT_PUBLIC_GITHUB_ACTIONS_URL:-}
+      NEXT_PUBLIC_DB_BACKUP_KEEP: ${DB_BACKUP_KEEP:-20}
+      NEXT_PUBLIC_UPLOADS_BACKUP_KEEP: ${UPLOADS_BACKUP_KEEP:-10}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:

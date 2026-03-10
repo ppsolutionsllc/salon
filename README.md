@@ -189,3 +189,20 @@ Variables:
 4. `https://aestheticsprime.beauty/crm/login` открывается.
 5. Логин создает сессию и редиректит в `/crm`.
 6. CRM страницы (`/crm`, `/staff`, `/client`) открываются без `HTTP 503`.
+
+## Coolify (без NPM)
+
+Если используешь Coolify для доменов, не поднимай отдельный NPM для этого же проекта.
+
+1. В Coolify создай ресурс типа **Docker Compose** (не Dockerfile).
+2. Укажи compose-файл: `docker-compose.coolify.yml`.
+3. Добавь переменные окружения из `.env.prod.example`.
+4. Для домена `aestheticsprime.beauty` привяжи сервис `web` к порту `3000` в настройках Coolify.
+5. После первого deploy выполни в терминале сервиса `api`:
+
+```bash
+alembic upgrade head
+python scripts/seed.py
+```
+
+Если выбрать в Coolify тип "Dockerfile", получишь ошибку `failed to read dockerfile: open Dockerfile: no such file or directory`, потому что Dockerfile в корне репозитория нет.
