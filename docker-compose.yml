@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: salon_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-salon_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-salon_db}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: salon_redis
+    restart: always
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: salon_api
+    restart: always
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./apps/api:/app
+      - uploads_data:/var/app/uploads
+      - ./.deploy:/var/app/deploy:ro
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-salon_db}
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOADS_DIR=/var/app/uploads
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-change-me}
+      - ENVIRONMENT=development
+      - SEED_NETWORK_ADMIN_EMAIL=${SEED_NETWORK_ADMIN_EMAIL:-admin}
+      - SEED_NETWORK_ADMIN_PASSWORD=${SEED_NETWORK_ADMIN_PASSWORD:-admin12345}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: salon_worker
+    restart: always
+    command: celery -A app.worker.celery_app worker --beat --loglevel=info
+    volumes:
+      - ./apps/api:/app
+      - uploads_data:/var/app/uploads
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-salon_db}
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOADS_DIR=/var/app/uploads
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-change-me}
+      - ENVIRONMENT=development
+      - SEED_NETWORK_ADMIN_EMAIL=${SEED_NETWORK_ADMIN_EMAIL:-admin}
+      - SEED_NETWORK_ADMIN_PASSWORD=${SEED_NETWORK_ADMIN_PASSWORD:-admin12345}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      target: builder
+    container_name: salon_web
+    restart: always
+    command: npm run dev
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3002:3000"
+    environment:
+      - INTERNAL_API_URL=http://api:8000/api/v1
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:4000}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:4000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-nextauth-secret-change-me}
+      - NEXT_PUBLIC_UPDATE_SYSTEM=${NEXT_PUBLIC_UPDATE_SYSTEM:-github_actions}
+      - NEXT_PUBLIC_DEPLOY_BRANCH=${NEXT_PUBLIC_DEPLOY_BRANCH:-main}
+      - NEXT_PUBLIC_AUTO_DEPLOY_ON_PUSH=${NEXT_PUBLIC_AUTO_DEPLOY_ON_PUSH:-true}
+      - NEXT_PUBLIC_DEPLOY_WORKFLOW_NAME=${NEXT_PUBLIC_DEPLOY_WORKFLOW_NAME:-Deploy To Server}
+      - NEXT_PUBLIC_GITHUB_ACTIONS_URL=${NEXT_PUBLIC_GITHUB_ACTIONS_URL:-}
+      - NEXT_PUBLIC_DB_BACKUP_KEEP=${DB_BACKUP_KEEP:-20}
+      - NEXT_PUBLIC_UPLOADS_BACKUP_KEEP=${UPLOADS_BACKUP_KEEP:-10}
+    depends_on:
+      - api
+
+  nginx:
+    image: nginx:alpine
+    container_name: salon_nginx
+    restart: always
+    ports:
+      - "4000:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - uploads_data:/var/app/uploads:ro
+    depends_on:
+      - api
+      - web
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./uploads

@@ -1,0 +1,43 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Deploy runtime state/logs
+.deploy/state.env
+.deploy/releases.log
+
+# Next.js / Node
+apps/web/node_modules/
+apps/web/.next/
+**/*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Runtime data / volumes
+data/**
+uploads/**
+!uploads/.gitkeep
+!uploads/public/
+!uploads/public/.gitkeep
+apps/api/celerybeat-schedule
+
+# Local artifacts
+backups/**
+!backups/.gitkeep
+logs/
+tmp/
+*.log
+
+# OS junk
+__MACOSX/
+.DS_Store

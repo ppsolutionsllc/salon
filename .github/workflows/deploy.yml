@@ -1,0 +1,117 @@
+name: Deploy To Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to run"
+        type: choice
+        required: true
+        default: deploy
+        options:
+          - deploy
+          - rollback
+          - status
+      ref:
+        description: "Ref for deploy or rollback (branch/tag/commit)"
+        required: false
+        default: ""
+      rollback_to:
+        description: "Explicit rollback ref (optional)"
+        required: false
+        default: ""
+      backup_uploads:
+        description: "Create uploads backup on deploy"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Server Action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run action over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script_stop: true
+          envs: GITHUB_SHA,GITHUB_REF_NAME,GITHUB_ACTOR
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ secrets.SERVER_APP_DIR }}"
+            if [ -z "$APP_DIR" ]; then
+              echo "SERVER_APP_DIR secret is empty"
+              exit 1
+            fi
+
+            ACTION="${{ github.event.inputs.action }}"
+            INPUT_REF="${{ github.event.inputs.ref }}"
+            ROLLBACK_TO="${{ github.event.inputs.rollback_to }}"
+            BACKUP_UPLOADS="${{ github.event.inputs.backup_uploads }}"
+
+            if [ "${{ github.event_name }}" = "push" ]; then
+              ACTION="deploy"
+              INPUT_REF="$GITHUB_SHA"
+              BACKUP_UPLOADS="false"
+            fi
+
+            ENVIRONMENT_VALUE="${{ vars.ENVIRONMENT }}"
+            if [ -z "$ENVIRONMENT_VALUE" ]; then
+              ENVIRONMENT_VALUE="production"
+            fi
+
+            HEALTHCHECK_PORT_VALUE="${{ vars.HEALTHCHECK_PORT }}"
+            if [ -z "$HEALTHCHECK_PORT_VALUE" ]; then
+              HEALTHCHECK_PORT_VALUE="4000"
+            fi
+
+            export APP_DIR
+            export DEPLOY_ACTOR="$GITHUB_ACTOR"
+            export ENVIRONMENT="$ENVIRONMENT_VALUE"
+            export HEALTHCHECK_PORT="$HEALTHCHECK_PORT_VALUE"
+
+            echo "Action: $ACTION"
+            echo "Ref: $INPUT_REF"
+            echo "Rollback to: $ROLLBACK_TO"
+            echo "Environment: $ENVIRONMENT"
+
+            case "$ACTION" in
+              deploy)
+                if [ -z "$INPUT_REF" ]; then
+                  INPUT_REF="main"
+                fi
+                if [ "$BACKUP_UPLOADS" = "true" ]; then
+                  bash "$APP_DIR/scripts/deploy_server.sh" --ref "$INPUT_REF" --backup-uploads
+                else
+                  bash "$APP_DIR/scripts/deploy_server.sh" --ref "$INPUT_REF"
+                fi
+                ;;
+              rollback)
+                if [ -n "$ROLLBACK_TO" ]; then
+                  bash "$APP_DIR/scripts/rollback_server.sh" --to "$ROLLBACK_TO" --no-migrations --reason "github_actions_manual"
+                elif [ -n "$INPUT_REF" ]; then
+                  bash "$APP_DIR/scripts/rollback_server.sh" --to "$INPUT_REF" --no-migrations --reason "github_actions_manual"
+                else
+                  bash "$APP_DIR/scripts/rollback_server.sh" --previous --no-migrations --reason "github_actions_manual"
+                fi
+                ;;
+              status)
+                bash "$APP_DIR/scripts/status_server.sh"
+                ;;
+              *)
+                echo "Unsupported action: $ACTION"
+                exit 1
+                ;;
+            esac

@@ -1,0 +1,30 @@
+{
+    "name": "Aesthetic Prime",
+    "short_name": "AesthPrime",
+    "description": "Beauty salon management app",
+    "start_url": "/login",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0d0d14",
+    "theme_color": "#f43f5e",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [],
+    "categories": [
+        "lifestyle",
+        "business"
+    ],
+    "prefer_related_applications": false
+}
