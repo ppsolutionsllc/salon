@@ -1,0 +1,42 @@
+export const siteEditorUk = {
+    nav: {
+        title: "Редактор сайту",
+        pages: "Сторінки",
+        media: "Медіа",
+    },
+    pages: {
+        title: "Сторінки сайту",
+        subtitle: "Керуйте контентом публічного сайту по салонах",
+        create: "Нова сторінка",
+        global: "Global (мережа)",
+        salon: "Салон",
+        open: "Відкрити редактор",
+        noData: "Сторінок поки немає",
+    },
+    editor: {
+        save: "Зберегти",
+        publish: "Опублікувати",
+        preview: "Попередній перегляд",
+        versions: "Версії",
+        draft: "Чернетка",
+        published: "Опубліковано",
+        blocks: "Блоки",
+        canvas: "Полотно",
+        settings: "Налаштування",
+        seo: "SEO",
+        page: "Сторінка",
+        autosave: "Автозбереження",
+        readonly: "Режим перегляду (без редагування)",
+    },
+    versions: {
+        title: "Історія версій",
+        rollback: "Відкотити",
+    },
+    media: {
+        title: "Медіа бібліотека",
+        upload: "Завантажити",
+        public: "Публічний",
+        private: "Приватний",
+        choose: "Обрати",
+    },
+} as const

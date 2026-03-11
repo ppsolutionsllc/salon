@@ -179,6 +179,60 @@ Variables:
 - Uploads хранятся в volume: `/var/app/uploads`.
 - В репозитории runtime-файлы не коммитятся.
 
+## Редактор сайту в CRM
+
+Редактор доступен в CRM: `/crm/site/pages`.
+
+### Ролі доступу
+
+- `NETWORK_ADMIN`, `SALON_ADMIN`: повне редагування.
+- `OPERATOR`: перегляд (read-only) за замовчуванням.
+- `OPERATOR` можна дозволити редагуванням через ENV:
+  - API: `SITE_EDITOR_OPERATOR_WRITE=true`
+  - Web: `NEXT_PUBLIC_SITE_EDITOR_OPERATOR_WRITE=true`
+
+### Multi-salon scope
+
+- `salon_id=0` у CRM означає `Global` (мережевий контент, `salon_id = null` у БД).
+- `salon_id>0` означає контент конкретного салону.
+- Public read endpoint:
+  - `GET /api/v1/public/site/{salon_id_or_global}/pages/{slug}`
+
+### Draft / Publish / Versions / Rollback
+
+- Збереження у редакторі створює нову версію (`page_versions`) і перемикає `draft_version_id`.
+- Публікація: `published_version_id = draft_version_id`.
+- Відкат: вибрана версія стає новою чернеткою.
+- Історія версій: `/crm/site/pages/[id]/versions`.
+
+### Preview
+
+- Кнопка "Попередній перегляд" створює токен (TTL, hash у БД).
+- Preview URL: `/preview/[slug]?token=...`
+- API: `GET /api/v1/site/preview/{slug}?token=...`
+
+### Медіа бібліотека
+
+- CRM: `/crm/site/media`
+- Upload: `POST /api/v1/salons/{salon_id}/media/upload`
+- List: `GET /api/v1/salons/{salon_id}/media/list`
+- Public file: `GET /api/v1/media/{id}`
+- Private file: `GET /api/v1/private-media/{id}` (auth required)
+
+### Як додати новий блок
+
+1. Додай тип блоку в:
+   - `apps/web/src/lib/site-editor/types.ts`
+   - `apps/web/src/lib/site-editor/schema.ts`
+2. Додай default-конфіг:
+   - `apps/web/src/lib/site-editor/blocks.ts`
+3. Додай рендер у:
+   - `apps/web/src/components/site/page-renderer.tsx`
+4. (Опційно) додай форму налаштувань у:
+   - `apps/web/src/components/site/page-editor.tsx`
+5. Переконайся, що тип додано в backend-валидацію:
+   - `apps/api/app/api/v1/endpoints/site_editor.py`
+
 ## Проверка "готово к работе"
 
 Перед сдачей/запуском в проде:

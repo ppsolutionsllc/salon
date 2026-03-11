@@ -21,6 +21,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required in production}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://aestheticsprime.beauty}
       - TRUSTED_HOSTS=${TRUSTED_HOSTS:-aestheticsprime.beauty,localhost,127.0.0.1,api}
+      - SITE_EDITOR_OPERATOR_WRITE=${SITE_EDITOR_OPERATOR_WRITE:-false}
       - WAIT_FOR_SERVICES_RETRIES=${WAIT_FOR_SERVICES_RETRIES:-40}
       - WAIT_FOR_SERVICES_DELAY=${WAIT_FOR_SERVICES_DELAY:-2}
     healthcheck:
@@ -49,6 +50,7 @@ services:
       - ENVIRONMENT=production
       - CORS_ORIGINS=${CORS_ORIGINS:-https://aestheticsprime.beauty}
       - TRUSTED_HOSTS=${TRUSTED_HOSTS:-aestheticsprime.beauty,localhost,127.0.0.1,api}
+      - SITE_EDITOR_OPERATOR_WRITE=${SITE_EDITOR_OPERATOR_WRITE:-false}
       - WAIT_FOR_SERVICES_RETRIES=${WAIT_FOR_SERVICES_RETRIES:-40}
       - WAIT_FOR_SERVICES_DELAY=${WAIT_FOR_SERVICES_DELAY:-2}
     depends_on:
@@ -81,6 +83,7 @@ services:
       - AUTH_URL=${AUTH_URL:?AUTH_URL is required in production}
       - AUTH_SECRET=${AUTH_SECRET:?AUTH_SECRET is required in production}
       - AUTH_TRUST_HOST=${AUTH_TRUST_HOST:-true}
+      - NEXT_PUBLIC_SITE_EDITOR_OPERATOR_WRITE=${NEXT_PUBLIC_SITE_EDITOR_OPERATOR_WRITE:-false}
       - NEXTAUTH_URL=${NEXTAUTH_URL:?NEXTAUTH_URL is required for compatibility}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required for compatibility}
     healthcheck:

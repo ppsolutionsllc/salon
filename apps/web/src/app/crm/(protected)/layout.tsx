@@ -19,6 +19,7 @@ import {
     Shield,
     MessageSquare,
     TrendingUp,
+    PanelsTopLeft,
 } from "lucide-react"
 
 const navItems = [
@@ -37,6 +38,7 @@ const navItems = [
             { icon: UserCheck, label: "Персонал", href: "/crm/staff" },
             { icon: Scissors, label: "Послуги", href: "/crm/services" },
             { icon: Store, label: "Салони", href: "/crm/salons" },
+            { icon: PanelsTopLeft, label: "Редактор сайту", href: "/crm/site/pages" },
         ]
     },
     {

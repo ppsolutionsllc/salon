@@ -1,7 +1,7 @@
 import enum
 from sqlalchemy import (
     Column, Integer, String, Boolean, ForeignKey, DateTime, 
-    Text, Enum as SQLEnum, Float, UniqueConstraint, JSON
+    Text, Enum as SQLEnum, Float, UniqueConstraint, JSON, Index
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -264,8 +264,9 @@ class EventOutbox(Base):
 class File(Base):
     __tablename__ = "files"
     id = Column(Integer, primary_key=True, index=True)
-    salon_id = Column(Integer, ForeignKey("salons.id"), nullable=False)
+    salon_id = Column(Integer, ForeignKey("salons.id"), nullable=True)
     uploaded_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String, nullable=True)
     filename = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
     mime_type = Column(String, nullable=False)
@@ -282,4 +283,46 @@ class AuditLog(Base):
     resource_type = Column(String, nullable=False)
     resource_id = Column(Integer, nullable=False)
     details = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Page(Base):
+    __tablename__ = "pages"
+    id = Column(Integer, primary_key=True, index=True)
+    salon_id = Column(Integer, ForeignKey("salons.id"), nullable=True)
+    slug = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    seo_title = Column(String, nullable=True)
+    seo_description = Column(Text, nullable=True)
+    og_image_file_id = Column(Integer, ForeignKey("files.id"), nullable=True)
+    draft_version_id = Column(Integer, ForeignKey("page_versions.id"), nullable=True)
+    published_version_id = Column(Integer, ForeignKey("page_versions.id"), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("salon_id", "slug", name="uq_pages_salon_slug"),
+        Index("ix_pages_global_slug_unique", "slug", unique=True, postgresql_where=(salon_id.is_(None))),
+    )
+
+
+class PageVersion(Base):
+    __tablename__ = "page_versions"
+    id = Column(Integer, primary_key=True, index=True)
+    page_id = Column(Integer, ForeignKey("pages.id", ondelete="CASCADE"), nullable=False)
+    content_json = Column(JSON, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    comment = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PreviewToken(Base):
+    __tablename__ = "preview_tokens"
+    id = Column(Integer, primary_key=True, index=True)
+    page_id = Column(Integer, ForeignKey("pages.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
